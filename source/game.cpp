@@ -449,7 +449,7 @@ void Game::render() {
     if (gameState == STATE_DIALOGUE) {
         drawDialogueBox(currentText);
     }
-
+}
 void Game::drawDialogueBox(std::string text) {
     GRRLIB_Rectangle(50, 320, 540, 120, 0x000000FF, 1);
     GRRLIB_Rectangle(55, 325, 530, 110, 0xFFFFFFFF, 0);
