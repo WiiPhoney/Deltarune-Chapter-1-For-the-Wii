@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <app version="1">
   <name>Deltarune Chapter 1</name>
-  <coder>Grimtime_</coder>
+  <coder>WiiPhoney</coder>
   <version>1</version>
-  <short_description>Deltarune on the Wii</short_description>
-  <long_description>A port of Deltarune to the Wii.</long_description>
+  <short_description>Deltarune Chapter One on the Wii</short_description>
+  <long_description>A port of Deltarune Chapter One to the Wii.</long_description>
   <ahb_access />
 </app>
