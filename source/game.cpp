@@ -450,15 +450,6 @@ void Game::render() {
         drawDialogueBox(currentText);
     }
 
-    const auto solids = buildSolids();
-    for (const auto& r : solids) {
-        GRRLIB_Rectangle(r.x, r.y, r.w, r.h, 0xFF000077, 0); 
-    }
-    RectF f = facingRect(0);
-    GRRLIB_Rectangle(f.x, f.y, f.w, f.h, 0x00FF0077, 1);
-    GRRLIB_Render();
-}
-
 void Game::drawDialogueBox(std::string text) {
     GRRLIB_Rectangle(50, 320, 540, 120, 0x000000FF, 1);
     GRRLIB_Rectangle(55, 325, 530, 110, 0xFFFFFFFF, 0);
