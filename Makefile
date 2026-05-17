@@ -1,112 +1,99 @@
-#ifndef GAME_H
-#define GAME_H
 
-#include <grrlib.h>
-#include <wiiuse/wpad.h>
-#include <string>
-#include <vector>
+TARGET      := deltarune_wii
+BUILD       := build
+SOURCES     := source
+INCLUDES    := include
+DATA        := deltarune
 
-static constexpr float SCALE = 2.0f;
 
-enum GameState {
-    STATE_OVERWORLD,
-    STATE_DIALOGUE
-};
+ifeq ($(strip $(DEVKITPRO)),)
+  $(error "DEVKITPRO not set")
+endif
 
-struct RectF {
-    float x, y, w, h;
-};
+DEVKITPPC   := $(DEVKITPRO)/devkitPPC
+export PATH := $(DEVKITPPC)/bin:$(PATH)
 
-struct InputState {
-    bool up = false;
-    bool down = false;
-    bool left = false;
-    bool right = false;
-    bool btnA = false;
-    bool btnB = false;
-};
 
-struct Player {
-    bool active;
-    float x, y;
-    int direction;
-    int frame;
-    int tick;
-    u32 colorTint;
-    InputState input;
-};
+CC      := powerpc-eabi-gcc
+CXX     := powerpc-eabi-g++
 
-struct AssetBundle {
-    GRRLIB_texImg* roomTex;
-    GRRLIB_texImg* computerTex;
-    GRRLIB_texImg* wagonTex;
-    GRRLIB_ttfFont* gameFont;
-    struct {
-        GRRLIB_texImg* down[4];
-        GRRLIB_texImg* up[4];
-        GRRLIB_texImg* left[4];
-        GRRLIB_texImg* right[4];
-    } anim;
-};
 
-struct Renderable {
-    GRRLIB_texImg* tex;
-    float x, y, sortY;
-    bool isPlayer;
-    u32 color;
-};
+CFLAGS   := -g -O2 -Wall -DGEKKO -mrvl
+CXXFLAGS := $(CFLAGS) -std=gnu++17
 
-class Game {
-public:
-    Game();
-    ~Game();
 
-    void update();
-    void render();
+INCLUDE  := -I$(CURDIR)/$(INCLUDES) \
+            -I$(DEVKITPRO)/libogc/include \
+            -I$(DEVKITPRO)/portlibs/ppc/include \
+            -I$(DEVKITPRO)/portlibs/wii/include
 
-private:
-    void loadAssets();
-    void unloadAssets();
-    void readInput();
-    void updateOverworld();
-    void drawDialogueBox(std::string text);
-    
-    void playSound(const u8* sound, u32 size);
-    void playSoundWiimote(const u8* data, u32 size);
-    void updateWiimoteStream();
 
-    RectF playerFeetRect(int id) const;
-    RectF playerBoundingBox(int id) const;
-    RectF facingRect(int id) const;
-    RectF deskRect() const;
-    RectF wagonRect() const;
-    RectF warpRect() const;
+LIBS := \
+-lgrrlib \
+-lpngu \
+-lpng \
+-lfreetype \
+-lbrotlidec \
+-lbrotlicommon \
+-lbz2 \
+-lz \
+-lasnd \
+-lwiiuse \
+-lbte \
+-lfat \
+-logc \
+-lm
 
-    std::vector<RectF> buildSolids() const;
-    bool blocked(const RectF& r, const std::vector<RectF>& solids) const;
-    void moveAndCollide(int id, float dx, float dy, const std::vector<RectF>& solids);
-    bool checkCollision(float px, float py, float pw, float ph, float ox, float oy, float ow, float oh);
+LIBPATHS := \
+-L$(DEVKITPRO)/portlibs/wii/lib \
+-L$(DEVKITPRO)/portlibs/ppc/lib \
+-L$(DEVKITPRO)/libogc/lib/wii
 
-    void updateFPS();
+CPPFILES := $(wildcard $(SOURCES)/*.cpp)
+CFILES   := $(wildcard $(SOURCES)/*.c)
+SFILES   := $(wildcard $(SOURCES)/*.s)
 
-    AssetBundle assets;
-    Player players[2];
-    GameState gameState;
-    
-    std::string currentText;
-    int textCharCount;
-    int textTick;
+OFILES := $(addprefix $(BUILD)/,$(notdir $(CPPFILES:.cpp=.o))) \
+          $(addprefix $(BUILD)/,$(notdir $(CFILES:.c=.o))) \
+          $(addprefix $(BUILD)/,$(notdir $(SFILES:.s=.o)))
 
-    float roomX, roomY;
 
-    u32 frameCount;
-    u32 lastFPSTime;
-    u32 currentFPS;
+BINFILES := $(wildcard $(DATA)/*.*)
+DATAOFILES := $(addprefix $(BUILD)/,$(notdir $(BINFILES:=.o)))
 
-    bool aSoundPlaying;
-    const u8* wmAudioData;
-    u32 wmAudioSize;
-    u32 wmAudioOffset;
-};
 
-#endif
+all: $(BUILD) $(TARGET).dol
+
+$(BUILD):
+	@mkdir -p $(BUILD)
+
+$(TARGET).elf: $(OFILES) $(DATAOFILES)
+	@echo Linking...
+	@$(CXX) $(CXXFLAGS) $^ $(LIBPATHS) $(LIBS) -o $@
+
+$(TARGET).dol: $(TARGET).elf
+	@$(DEVKITPRO)/tools/bin/elf2dol $< $@
+	@echo Built OK
+
+
+$(BUILD)/%.o: $(SOURCES)/%.cpp
+	@echo Compiling $<
+	@$(CXX) $(CXXFLAGS) $(INCLUDE) -c $< -o $@
+
+$(BUILD)/%.o: $(SOURCES)/%.c
+	@echo Compiling $<
+	@$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
+
+$(BUILD)/%.o: $(SOURCES)/%.s
+	@echo Assembling $<
+	@$(CC) -x assembler-with-cpp -c $< -o $@
+
+
+$(BUILD)/%.o: $(DATA)/%
+	@echo Embedding asset $<
+	@$(DEVKITPRO)/tools/bin/bin2s -a 32 $< > $(BUILD)/$*.s
+	@$(CC) -x assembler-with-cpp -c $(BUILD)/$*.s -o $@
+
+clean:
+	@rm -rf $(BUILD) $(TARGET).elf $(TARGET).dol
+	@echo Cleaned
